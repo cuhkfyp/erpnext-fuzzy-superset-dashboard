@@ -98,7 +98,7 @@ def run() -> dict[str, object]:
     quality_summary = _query(
         "SELECT source,classification,environment,source_row_count,sex_mapping_ready,"
         "placeholder_sex_rows,dob_mapping_ready,dob_key_mapping_ready,valid_district_rows,"
-        "unmapped_location_rows,missing_district_rows,growth_readiness "
+        "unmapped_location_rows,missing_district_rows,service_start_coverage_pct,growth_readiness "
         f"FROM ({quality_sql}) data_quality ORDER BY classification,source"
     )
     result = {

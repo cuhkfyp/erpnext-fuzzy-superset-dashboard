@@ -61,6 +61,29 @@ CUSTOM_FIELDS = {
             "allow_on_submit": 1,
             "description": "Centre capability date; this is not a client enrolment date.",
         },
+        {
+            "fieldname": "custom_service_start_date",
+            "label": "Service Start Date / 服務開始日期",
+            "fieldtype": "Date",
+            "insert_after": "custom_service_available_from",
+            "allow_on_submit": 1,
+            "description": (
+                "Optional registration-level reference date. Client growth uses the "
+                "per-client date on CCD Master, not this source-level value."
+            ),
+        },
+    ],
+    "CCD Master": [
+        {
+            "fieldname": "custom_service_start_date",
+            "label": "Service Start Date / 服務開始日期",
+            "fieldtype": "Date",
+            "insert_after": "service_name",
+            "description": (
+                "Actual date this client began receiving this service; used for "
+                "governed growth reporting."
+            ),
+        },
     ]
 }
 
@@ -102,7 +125,7 @@ def install() -> dict[str, object]:
         )
         seeded.append({"root": root, "current": row.name, "environment": environment})
     frappe.db.commit()
-    result = {"field_count": 4, "seeded": seeded}
+    result = {"field_count": 6, "seeded": seeded}
     print(result)
     return result
 

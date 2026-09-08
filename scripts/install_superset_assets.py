@@ -491,8 +491,9 @@ def build_position(chart_specs: list[dict[str, Any]], chart_ids: dict[str, int])
                 "meta": {
                     "code": (
                         "### New User Growth / 新客戶增長 — Unavailable / 尚未提供\n"
-                        "A governed `custom_service_start_date` and adequate retained history do not yet exist. "
-                        "Registration creation dates are not substituted because that would be misleading."
+                        "The governed `custom_service_start_date` field is installed on CCD Master, but populated "
+                        "coverage and adequate retained history are not yet available. Registration creation dates "
+                        "and the registration-level reference date are not substituted because that would be misleading."
                     ),
                     "height": 10,
                     "width": 12,

@@ -12,8 +12,8 @@ dashboard is a new object and the installer refuses to modify dashboard ID 5.
   clearing Environment selects all included environments.
 - `CCD Dashboard Viewer`, with dashboard/dataset read access but no SQL Lab,
   raw CCD Master, export, CSV, or individual-drill permissions.
-- Three editable-after-submit CCD Registration metadata fields plus a bilingual
-  section heading.
+- Four editable-after-submit CCD Registration metadata fields plus a bilingual
+  section heading, and a client-level service-start date on CCD Master.
 - A one-worker, bounded-thread Gunicorn systemd unit and a Superset-only restart
   path. The live cache is explicitly `NullCache` and refresh frequency is zero.
 - A disabled, isolated Redis profile for a later capacity-reviewed release.
@@ -55,9 +55,11 @@ Splink, exception, or component-review rows do not. A multi-service person
 counts once globally and once in every applicable service. Canonical DOB, sex,
 and district categories preserve Unknown, Invalid, and Conflicting states.
 
-`custom_service_start_date` on CCD Master does not yet exist. New User Growth is
-therefore displayed as unavailable rather than inferred from registration or
-modification timestamps.
+`custom_service_start_date` is installed on CCD Master for the actual client
+service-enrolment date and on CCD Registration as optional source-level metadata.
+Growth uses only CCD Master dates. New User Growth remains unavailable until the
+client-level field has adequate populated coverage and retained history; it is
+never inferred from registration or modification timestamps.
 
 ## Validation
 

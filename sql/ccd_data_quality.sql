@@ -63,6 +63,7 @@ row_quality AS (
         m.ccd_reg_source AS source,
         COUNT(*) AS source_row_count,
         SUM(NULLIF(TRIM(m.service_name), '') IS NOT NULL) AS row_service_populated,
+        SUM(m.custom_service_start_date IS NOT NULL) AS service_start_populated_rows,
         SUM(m.birthday IS NOT NULL) AS dob_populated_rows,
         SUM(
             m.birthday IS NOT NULL
@@ -167,8 +168,24 @@ SELECT
         WHEN COALESCE(rq.source_row_count, 0) = 0 THEN 0.0
         ELSE ROUND(100.0 * COALESCE(rq.row_service_populated, 0) / rq.source_row_count, 2)
     END AS service_metadata_coverage_pct,
-    0.0 AS service_start_coverage_pct,
-    'Unavailable - custom_service_start_date not installed' AS growth_readiness,
+    CASE
+        WHEN COALESCE(rq.source_row_count, 0) = 0 THEN 0.0
+        ELSE ROUND(
+            100.0 * COALESCE(rq.service_start_populated_rows, 0) / rq.source_row_count,
+            2
+        )
+    END AS service_start_coverage_pct,
+    CASE
+        WHEN COALESCE(rq.source_row_count, 0) = 0
+            THEN 'Unavailable - no source rows'
+        WHEN COALESCE(rq.service_start_populated_rows, 0) = 0
+            THEN 'Unavailable - service start dates not populated'
+        ELSE CONCAT(
+            'Field populated - ',
+            ROUND(100.0 * rq.service_start_populated_rows / rq.source_row_count, 2),
+            '% coverage; validate retained history'
+        )
+    END AS growth_readiness,
     COALESCE(mr.sex_mapping_ready, 0) AS sex_mapping_ready,
     CASE
         WHEN COALESCE(mr.sex_mapping_ready, 0) = 0 THEN COALESCE(rq.stored_m_rows, 0)

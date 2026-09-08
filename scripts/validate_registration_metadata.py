@@ -25,11 +25,16 @@ EXPECTED_ENVIRONMENTS = {
     "DT-NB10_maxdb": "Development",
 }
 
-EXPECTED_FIELDS = {
+EXPECTED_REGISTRATION_FIELDS = {
     "custom_dashboard_metadata_section": ("Section Break", 1),
     "custom_include_in_dashboard": ("Check", 1),
     "custom_dashboard_environment": ("Select", 1),
     "custom_service_available_from": ("Date", 1),
+    "custom_service_start_date": ("Date", 1),
+}
+
+EXPECTED_MASTER_FIELDS = {
+    "custom_service_start_date": ("Date", 0),
 }
 
 
@@ -45,23 +50,38 @@ def root_name(registration_name: str, amended_from: str | None) -> str:
 
 
 def validate() -> dict[str, object]:
-    fields = frappe.get_all(
+    registration_fields = frappe.get_all(
         "Custom Field",
         filters={
             "dt": "CCD Registration",
-            "fieldname": ["in", list(EXPECTED_FIELDS)],
+            "fieldname": ["in", list(EXPECTED_REGISTRATION_FIELDS)],
         },
         fields=["fieldname", "fieldtype", "allow_on_submit", "default", "options"],
     )
-    by_name = {row.fieldname: row for row in fields}
-    assert set(by_name) == set(EXPECTED_FIELDS)
-    for fieldname, (fieldtype, allow_on_submit) in EXPECTED_FIELDS.items():
+    by_name = {row.fieldname: row for row in registration_fields}
+    assert set(by_name) == set(EXPECTED_REGISTRATION_FIELDS)
+    for fieldname, (fieldtype, allow_on_submit) in EXPECTED_REGISTRATION_FIELDS.items():
         row = by_name[fieldname]
         assert row.fieldtype == fieldtype
         assert int(row.allow_on_submit or 0) == allow_on_submit
     assert str(by_name["custom_include_in_dashboard"].default or "0") == "0"
     select_options = set((by_name["custom_dashboard_environment"].options or "").splitlines())
     assert {"Production", "UAT", "SIT", "Development", "Test"}.issubset(select_options)
+
+    master_fields = frappe.get_all(
+        "Custom Field",
+        filters={
+            "dt": "CCD Master",
+            "fieldname": ["in", list(EXPECTED_MASTER_FIELDS)],
+        },
+        fields=["fieldname", "fieldtype", "allow_on_submit"],
+    )
+    master_by_name = {row.fieldname: row for row in master_fields}
+    assert set(master_by_name) == set(EXPECTED_MASTER_FIELDS)
+    for fieldname, (fieldtype, allow_on_submit) in EXPECTED_MASTER_FIELDS.items():
+        row = master_by_name[fieldname]
+        assert row.fieldtype == fieldtype
+        assert int(row.allow_on_submit or 0) == allow_on_submit
 
     registrations = frappe.get_all(
         "CCD Registration",
@@ -85,7 +105,9 @@ def validate() -> dict[str, object]:
     assert dict(classified) == EXPECTED_ENVIRONMENTS
 
     result = {
-        "custom_fields_valid": len(fields),
+        "custom_fields_valid": len(registration_fields) + len(master_fields),
+        "ccd_master_service_start_date": True,
+        "ccd_registration_service_start_date": True,
         "classified_current_sources": len(classified),
         "environments": sorted(set(EXPECTED_ENVIRONMENTS.values())),
     }
