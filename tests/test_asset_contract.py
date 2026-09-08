@@ -79,3 +79,18 @@ def test_four_required_virtual_datasets_are_present():
         "ccd_data_quality",
     }
 
+
+def test_primary_summary_counts_use_exact_integer_format():
+    charts = {
+        item["key"]: item
+        for item in json.loads((ROOT / "manifests" / "charts.json").read_text())
+    }
+    assert charts["logical_clients"]["number_format"] == ",.0f"
+    assert charts["source_rows"]["number_format"] == ",.0f"
+
+
+def test_circle_charts_use_taller_compact_label_layout():
+    installer = (ROOT / "scripts" / "install_superset_assets.py").read_text()
+    assert '"label_type": "value"' in installer
+    assert '"outerRadius": 55' in installer
+    assert '"height": 38 if spec["viz"] == "pie"' in installer

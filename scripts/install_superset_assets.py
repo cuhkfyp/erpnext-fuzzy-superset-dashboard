@@ -81,7 +81,7 @@ def chart_params(spec: dict[str, Any], dataset_id: int, dashboard_id: int) -> di
                 "metric": sql_metric(spec["metric"]),
                 "header_font_size": 0.32,
                 "subtitle_font_size": 0.13,
-                "y_axis_format": "SMART_NUMBER",
+                "y_axis_format": spec.get("number_format", "SMART_NUMBER"),
                 "conditional_formatting": [],
             }
         )
@@ -112,9 +112,14 @@ def chart_params(spec: dict[str, Any], dataset_id: int, dashboard_id: int) -> di
                 "donut": True,
                 "show_legend": True,
                 "legendType": "scroll",
+                "legendOrientation": "top",
+                "show_labels": True,
+                "label_line": True,
                 "show_labels_threshold": 5,
-                "label_type": "key_percent",
-                "number_format": "SMART_NUMBER",
+                "label_type": "value",
+                "number_format": ",.0f",
+                "outerRadius": 55,
+                "innerRadius": 30,
             }
         )
     elif viz == "heatmap":
@@ -462,7 +467,7 @@ def build_position(chart_specs: list[dict[str, Any]], chart_ids: dict[str, int])
                     "chartId": chart_id,
                     "sliceName": spec["title"],
                     "uuid": str(uuid.UUID(bytes=stable_uuid("chart", spec["key"]))),
-                    "height": 28 if width < 12 else 34,
+                    "height": 38 if spec["viz"] == "pie" else (28 if width < 12 else 34),
                     "width": width,
                 },
             }
@@ -801,4 +806,3 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     print(json.dumps(install(parse_args()), indent=2, sort_keys=True))
-

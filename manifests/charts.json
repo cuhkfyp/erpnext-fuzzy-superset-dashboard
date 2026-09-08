@@ -1,6 +1,6 @@
 [
-  {"key":"logical_clients","tab":"summary","title":"Logical Clients / 邏輯客戶","dataset":"ccd_person_service_presence","viz":"big_number_total","metric":"COUNT(DISTINCT logical_person_key)"},
-  {"key":"source_rows","tab":"summary","title":"CCD Source Rows / CCD來源記錄","dataset":"ccd_person_service_presence","viz":"big_number_total","metric":"SUM(source_row_count)"},
+  {"key":"logical_clients","tab":"summary","title":"Logical Clients / 邏輯客戶","dataset":"ccd_person_service_presence","viz":"big_number_total","metric":"COUNT(DISTINCT logical_person_key)","number_format":",.0f"},
+  {"key":"source_rows","tab":"summary","title":"CCD Source Rows / CCD來源記錄","dataset":"ccd_person_service_presence","viz":"big_number_total","metric":"SUM(source_row_count)","number_format":",.0f"},
   {"key":"populated_sources","tab":"summary","title":"Populated Sources / 有資料來源","dataset":"ccd_person_service_presence","viz":"big_number_total","metric":"COUNT(DISTINCT source)"},
   {"key":"active_groups","tab":"summary","title":"Active Groups / 有效群組","dataset":"ccd_identity_operations","viz":"big_number_total","metric":"SUM(metric_count)","filters":[["operation_area","==","Governed Groups"],["status","==","Active"]],"global":true},
   {"key":"linked_members","tab":"summary","title":"Linked Member Rows / 已連結成員","dataset":"ccd_identity_operations","viz":"big_number_total","metric":"SUM(metric_count)","filters":[["operation_area","==","Memberships"],["status","==","Active"]],"global":true},
