@@ -3,9 +3,24 @@
 ## Scope boundaries
 
 The runtime scripts manage only `/home/frappe-user/superset`,
-`hksr-superset.service`, and `/usr/local/sbin/hksr-superset-restart`. They do not
-restart or reconfigure ERPNext, n8n, or Redis containers. Do not enable the
-future Redis Compose profile in this release.
+`hksr-superset.service`, the `hksr-mariadb-proxy` units, and
+`/usr/local/sbin/hksr-superset-restart`. They do not restart or reconfigure
+ERPNext, n8n, or Redis containers. Do not enable the future Redis Compose
+profile in this release.
+
+## MariaDB routes
+
+The canonical Superset database host is `erpnext_db:3306`. A systemd
+socket-activated proxy listens only on `127.0.0.1:3306` and forwards to that
+same alias, retaining compatibility with legacy local clients without exposing
+MariaDB publicly. Use `scripts/repair_mysql_route.py` first in check-only mode,
+then with `--apply`, to replace an accidental loopback host in Superset metadata.
+The script tests `SELECT 1` before committing and never prints the URI or
+credentials.
+
+Validate both paths with a TCP probe and execute the representative chart-data
+validator after the repair. Enabling or restarting the proxy must not restart
+or recreate the MariaDB, ERPNext, n8n, or Redis containers.
 
 ## Metadata backup
 
@@ -41,4 +56,3 @@ service. Recheck `/health` and the dashboard-5 hash.
 and one dashboard-role link. It has no `database_access`, `schema_access`,
 `all_datasource_access`, SQL Lab menu/action, CSV/export, or drill permission.
 Superset Admin users remain unrestricted. ERPNext roles are unrelated.
-

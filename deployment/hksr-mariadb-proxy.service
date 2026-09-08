@@ -1,0 +1,17 @@
+[Unit]
+Description=HKSR Superset local MariaDB compatibility proxy
+Requires=hksr-mariadb-proxy.socket
+After=network-online.target hksr-mariadb-proxy.socket
+
+[Service]
+ExecStart=/lib/systemd/systemd-socket-proxyd --connections-max=32 --exit-idle-time=5min erpnext_db:3306
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes

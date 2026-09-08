@@ -1,0 +1,10 @@
+[Unit]
+Description=HKSR Superset local MariaDB compatibility socket
+Before=hksr-superset.service
+
+[Socket]
+ListenStream=127.0.0.1:3306
+NoDelay=true
+
+[Install]
+WantedBy=sockets.target

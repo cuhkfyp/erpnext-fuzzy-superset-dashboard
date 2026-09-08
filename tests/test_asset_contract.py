@@ -94,3 +94,18 @@ def test_circle_charts_use_taller_compact_label_layout():
     assert '"label_type": "value"' in installer
     assert '"outerRadius": 55' in installer
     assert '"height": 38 if spec["viz"] == "pie"' in installer
+
+
+def test_canonical_and_loopback_database_routes_are_managed():
+    socket_unit = (ROOT / "deployment" / "hksr-mariadb-proxy.socket").read_text()
+    proxy_unit = (ROOT / "deployment" / "hksr-mariadb-proxy.service").read_text()
+    superset_unit = (ROOT / "deployment" / "hksr-superset.service").read_text()
+    installer = (ROOT / "deployment" / "install_runtime.sh").read_text()
+    repair = (ROOT / "scripts" / "repair_mysql_route.py").read_text()
+    assert "ListenStream=127.0.0.1:3306" in socket_unit
+    assert "erpnext_db:3306" in proxy_unit
+    assert "hksr-mariadb-proxy.socket" in superset_unit
+    assert "systemctl enable --now hksr-mariadb-proxy.socket" in installer
+    assert 'parser.add_argument("--host", default="erpnext_db")' in repair
+    assert "set_sqlalchemy_uri" in repair
+    assert "SELECT 1" in repair

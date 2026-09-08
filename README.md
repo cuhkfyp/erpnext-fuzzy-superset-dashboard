@@ -16,6 +16,9 @@ dashboard is a new object and the installer refuses to modify dashboard ID 5.
   section heading, and a client-level service-start date on CCD Master.
 - A one-worker, bounded-thread Gunicorn systemd unit and a Superset-only restart
   path. The live cache is explicitly `NullCache` and refresh frequency is zero.
+- A loopback-only compatibility proxy makes `127.0.0.1:3306` reach the same
+  MariaDB service as the canonical `erpnext_db:3306` route. Superset itself uses
+  the canonical alias so a missing temporary forward cannot break dashboards.
 - A disabled, isolated Redis profile for a later capacity-reviewed release.
 
 No database URI, password, token, certificate, Superset SQLite file, backup,
@@ -43,9 +46,16 @@ raw query result, client data, or screenshot is stored here.
    `--finalize-access` to remove only the Admin role from `gest-ai`; Alpha and
    ownership remain.
 5. As root, run `deployment/install_runtime.sh`. It updates only Superset files,
-   installs `hksr-superset.service`, stops the exact legacy Superset process,
-   and checks HTTPS `/health`. It does not invoke Docker or touch ERPNext, n8n,
-   or either Redis deployment.
+   installs `hksr-superset.service` and the loopback-only MariaDB compatibility
+   proxy, stops the exact legacy Superset process, and checks HTTPS `/health`.
+   It does not invoke Docker or touch ERPNext, n8n, or either Redis deployment.
+6. If a legacy Superset database record points at `127.0.0.1`, validate and
+   restore its canonical route without printing credentials:
+
+   ```bash
+   python3 scripts/repair_mysql_route.py
+   python3 scripts/repair_mysql_route.py --apply
+   ```
 
 ## Governed counting behavior
 
