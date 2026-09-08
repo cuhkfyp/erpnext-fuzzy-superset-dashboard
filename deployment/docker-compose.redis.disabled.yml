@@ -1,0 +1,15 @@
+services:
+  ccd-superset-redis:
+    image: redis:7-alpine
+    profiles: ["future-cache"]
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "127.0.0.1:6391:6379"
+    volumes:
+      - ./redis.disabled.conf:/usr/local/etc/redis/redis.conf:ro
+      - ccd-superset-redis-data:/data
+    restart: "no"
+
+volumes:
+  ccd-superset-redis-data: {}
+

@@ -1,0 +1,77 @@
+# Common Client Database / 共同客戶資料庫
+
+Portable, aggregate-only assets for the governed CCD Superset dashboard. The
+dashboard is a new object and the installer refuses to modify dashboard ID 5.
+
+## What is installed
+
+- Four live MariaDB virtual datasets under `sql/`.
+- Twenty-four bilingual charts on Summary, Services, Identity Resolution, and
+  Data Quality tabs.
+- Cascading Environment → Service → Source filters. Production is the default;
+  clearing Environment selects all included environments.
+- `CCD Dashboard Viewer`, with dashboard/dataset read access but no SQL Lab,
+  raw CCD Master, export, CSV, or individual-drill permissions.
+- Three editable-after-submit CCD Registration metadata fields plus a bilingual
+  section heading.
+- A one-worker, bounded-thread Gunicorn systemd unit and a Superset-only restart
+  path. The live cache is explicitly `NullCache` and refresh frequency is zero.
+- A disabled, isolated Redis profile for a later capacity-reviewed release.
+
+No database URI, password, token, certificate, Superset SQLite file, backup,
+raw query result, client data, or screenshot is stored here.
+
+## Deployment order
+
+1. Verify a fresh ERPNext database backup and a compressed mode-0600 Superset
+   SQLite backup with `PRAGMA integrity_check`.
+2. Install fields from a Frappe console:
+
+   ```python
+   exec(open("scripts/install_custom_fields.py").read(), globals())
+   ```
+
+3. Validate the asset installer twice against a disposable metadata copy:
+
+   ```bash
+   python3 scripts/install_superset_assets.py --metadata-db /tmp/superset-validation.db
+   python3 scripts/install_superset_assets.py --metadata-db /tmp/superset-validation.db
+   ```
+
+4. Install live metadata, initially without access finalization. Validate chart
+   queries, ownership, role scope, and dashboard-5 hash. Then rerun with
+   `--finalize-access` to remove only the Admin role from `gest-ai`; Alpha and
+   ownership remain.
+5. As root, run `deployment/install_runtime.sh`. It updates only Superset files,
+   installs `hksr-superset.service`, stops the exact legacy Superset process,
+   and checks HTTPS `/health`. It does not invoke Docker or touch ERPNext, n8n,
+   or either Redis deployment.
+
+## Governed counting behavior
+
+Current Active and Needs Revalidation identity memberships collapse records to
+one logical person. Ended memberships/groups and pending recommendation,
+Splink, exception, or component-review rows do not. A multi-service person
+counts once globally and once in every applicable service. Canonical DOB, sex,
+and district categories preserve Unknown, Invalid, and Conflicting states.
+
+`custom_service_start_date` on CCD Master does not yet exist. New User Growth is
+therefore displayed as unavailable rather than inferred from registration or
+modification timestamps.
+
+## Validation
+
+`scripts/validate_live_metrics.py` reconciles the virtual person dataset with a
+separate raw-row-minus-current-group-reduction query. `scripts/benchmark_live_query.py`
+times representative Production charts. The test suite checks privacy,
+filter/global scope, role exclusions, metadata fields, and synthetic governance
+edge cases.
+
+`scripts/validate_registration_metadata.py` audits the live Custom Fields and
+current-source classifications from a Frappe console. The read-only
+`scripts/validate_superset_metadata.py` checks SQLite integrity, dashboard 5,
+ownership, viewer scope, filters, global identity charts, and production access
+finalization.
+
+See [OPERATIONS.md](docs/OPERATIONS.md) for backup, rollback, service, and
+rebuild procedures.

@@ -1,0 +1,21 @@
+{
+  "title": "Common Client Database / 共同客戶資料庫",
+  "slug": "common-client-database-governed",
+  "published": true,
+  "refresh_frequency_seconds": 0,
+  "data_cache": "NullCache",
+  "cross_filters_enabled": false,
+  "default_environment": "Production",
+  "clear_environment_means": "All included environments",
+  "filter_order": ["Environment / 環境", "Service / 服務", "Source / 來源"],
+  "tabs": [
+    "Summary / 總覽",
+    "Services / 服務",
+    "Identity Resolution / 身份解析",
+    "Data Quality / 數據質量"
+  ],
+  "identity_filters": "global-unfiltered",
+  "protected_dashboard_id": 5,
+  "viewer_role": "CCD Dashboard Viewer"
+}
+

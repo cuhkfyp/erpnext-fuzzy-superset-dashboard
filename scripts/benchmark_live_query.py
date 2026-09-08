@@ -1,0 +1,34 @@
+"""Time representative live chart queries from a Frappe console."""
+
+import time
+from pathlib import Path
+
+import frappe
+
+
+sql = Path("/tmp/ccd-dashboard-sql/ccd_person_service_presence.sql").read_text().strip().rstrip(";")
+queries = [
+    (
+        "production_logical",
+        f"SELECT COUNT(DISTINCT logical_person_key) FROM ({sql}) p WHERE environment='Production'",
+    ),
+    (
+        "production_age",
+        f"SELECT age_band,dob_confidence,COUNT(DISTINCT logical_person_key) "
+        f"FROM ({sql}) p WHERE environment='Production' GROUP BY age_band,dob_confidence",
+    ),
+]
+for label, query in queries:
+    started = time.monotonic()
+    result = frappe.db.sql(query)
+    print(
+        label,
+        "seconds=",
+        round(time.monotonic() - started, 3),
+        "rows=",
+        len(result),
+        "first=",
+        result[0] if result else None,
+        flush=True,
+    )
+

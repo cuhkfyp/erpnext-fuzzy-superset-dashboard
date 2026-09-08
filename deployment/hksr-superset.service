@@ -1,0 +1,25 @@
+[Unit]
+Description=HKSR Apache Superset
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=frappe-user
+Group=frappe-user
+WorkingDirectory=/home/frappe-user/superset
+Environment=FLASK_APP=superset
+Environment=SUPERSET_CONFIG_PATH=/home/frappe-user/superset/superset_config.py
+EnvironmentFile=-/home/frappe-user/superset/hksr-superset.env
+ExecStartPre=/home/frappe-user/venv/bin/python -c "from superset.app import create_app; app=create_app(); assert app"
+ExecStart=/home/frappe-user/venv/bin/gunicorn --workers 1 --worker-class gthread --threads 4 --timeout 180 --graceful-timeout 30 --keep-alive 5 --bind 0.0.0.0:8088 --certfile /home/frappe-user/superset/cert/hksr.org.hk.pem --keyfile /home/frappe-user/superset/cert/hksr.org.hk.key "superset.app:create_app()"
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=45
+LimitNOFILE=65536
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target
+

@@ -1,0 +1,85 @@
+[
+  {
+    "name": "ccd_person_service_presence",
+    "description": "Governed one-row-per-logical-person/service/source presence with pseudonymous keys and canonical categories.",
+    "columns": {
+      "logical_person_key": "VARCHAR(64)",
+      "environment": "VARCHAR(32)",
+      "service": "VARCHAR(255)",
+      "source": "VARCHAR(255)",
+      "identity_state": "VARCHAR(32)",
+      "age_band": "VARCHAR(32)",
+      "dob_confidence": "VARCHAR(32)",
+      "sex_category": "VARCHAR(32)",
+      "district_code": "VARCHAR(16)",
+      "district": "VARCHAR(255)",
+      "area": "VARCHAR(255)",
+      "services_per_person": "BIGINT",
+      "source_row_count": "BIGINT",
+      "service_available_from": "DATE",
+      "latest_ccd_modified": "DATETIME"
+    }
+  },
+  {
+    "name": "ccd_service_overlap",
+    "description": "One row per logical person and unordered governed service/source pair.",
+    "columns": {
+      "logical_person_key": "VARCHAR(64)",
+      "environment_a": "VARCHAR(32)",
+      "environment_b": "VARCHAR(32)",
+      "environment": "VARCHAR(32)",
+      "service_a": "VARCHAR(255)",
+      "service_b": "VARCHAR(255)",
+      "source_a": "VARCHAR(255)",
+      "source_b": "VARCHAR(255)",
+      "endpoint_a": "VARCHAR(512)",
+      "endpoint_b": "VARCHAR(512)"
+    }
+  },
+  {
+    "name": "ccd_identity_operations",
+    "description": "Global aggregate identity-resolution states and workflow pipeline counts; intentionally filter-independent.",
+    "columns": {
+      "operation_area": "VARCHAR(64)",
+      "status": "VARCHAR(255)",
+      "detail": "VARCHAR(255)",
+      "metric_count": "BIGINT",
+      "group_size": "BIGINT",
+      "snapshot_at": "DATETIME"
+    }
+  },
+  {
+    "name": "ccd_data_quality",
+    "description": "Source-level classification, mapping readiness, field coverage, warning counts, and freshness.",
+    "columns": {
+      "source": "VARCHAR(255)",
+      "classification": "VARCHAR(32)",
+      "environment": "VARCHAR(32)",
+      "include_in_dashboard": "BOOLEAN",
+      "source_row_count": "BIGINT",
+      "populated_source": "BOOLEAN",
+      "service_metadata_coverage_pct": "DECIMAL(8,2)",
+      "service_start_coverage_pct": "DECIMAL(8,2)",
+      "growth_readiness": "VARCHAR(255)",
+      "sex_mapping_ready": "BOOLEAN",
+      "placeholder_sex_rows": "BIGINT",
+      "stored_sex_rows": "BIGINT",
+      "dob_mapping_ready": "BOOLEAN",
+      "dob_key_mapping_ready": "BOOLEAN",
+      "dob_populated_rows": "BIGINT",
+      "usable_dob_rows": "BIGINT",
+      "verified_dob_rows": "BIGINT",
+      "plausible_unverified_dob_rows": "BIGINT",
+      "invalid_dob_rows": "BIGINT",
+      "birthday_mapping_defect_rows": "BIGINT",
+      "residential_district_mapping_ready": "BOOLEAN",
+      "postal_district_mapping_ready": "BOOLEAN",
+      "valid_district_rows": "BIGINT",
+      "unmapped_location_rows": "BIGINT",
+      "missing_district_rows": "BIGINT",
+      "service_available_from": "DATE",
+      "latest_ccd_modified": "DATETIME"
+    }
+  }
+]
+
