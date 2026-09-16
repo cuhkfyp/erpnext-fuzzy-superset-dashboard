@@ -105,5 +105,11 @@ current-source classifications from a Frappe console. The read-only
 ownership, viewer scope, filters, global identity charts, and production access
 finalization.
 
+For controlled location remediation,
+`scripts/export_address_inference_review.py` creates a private mode-0600 CSV of
+distinct failed address values and counts. It excludes CCD Master identifiers,
+identity-group identifiers, names, contacts, and email fields. Its output must
+remain outside Git and must never become a dashboard dataset.
+
 See [OPERATIONS.md](docs/OPERATIONS.md) for backup, rollback, service, and
 rebuild procedures.
