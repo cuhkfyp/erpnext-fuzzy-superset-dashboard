@@ -1,7 +1,8 @@
 /*
 Aggregate-safe presence grain: one row per logical person, environment,
 service, and governed CCD source.  No direct CCD Master or group identifier is
-projected.  The SHA-256 key is a pseudonymous grouping key, not an identity.
+projected.  The durable Unified Person number is used only as the internal
+anchor and is SHA-256 hashed before projection; the output remains pseudonymous.
 */
 WITH RECURSIVE registration_lineage AS (
     SELECT
@@ -66,6 +67,18 @@ current_membership AS (
     WHERE im.status = 'Active'
       AND (im.valid_to IS NULL OR im.valid_to > CURRENT_TIMESTAMP)
     GROUP BY im.ccd_master
+),
+current_unified_membership AS (
+    SELECT
+        membership.ccd_master,
+        MAX(membership.unified_person) AS unified_person
+    FROM `tabCCD Unified Person Membership` membership
+    JOIN `tabCCD Unified Person` person
+      ON person.name = membership.unified_person
+     AND person.status = 'Active'
+    WHERE membership.status = 'Active'
+      AND (membership.valid_to IS NULL OR membership.valid_to > CURRENT_TIMESTAMP)
+    GROUP BY membership.ccd_master
 ),
 raw_record_values AS (
     SELECT
@@ -170,7 +183,7 @@ raw_record_values AS (
 record_demographics AS (
     SELECT
         cm.identity_group,
-        CONCAT('G:', cm.identity_group) AS person_anchor,
+        CONCAT('U:', COALESCE(cum.unified_person, CONCAT('legacy-group:', cm.identity_group))) AS person_anchor,
         rv.include_in_dashboard,
         rv.environment,
         rv.service,
@@ -188,12 +201,13 @@ record_demographics AS (
         rv.postal_district_code
     FROM current_membership cm
     STRAIGHT_JOIN raw_record_values rv ON rv.master_name = cm.ccd_master
+    LEFT JOIN current_unified_membership cum ON cum.ccd_master = cm.ccd_master
 
     UNION ALL
 
     SELECT
         NULL,
-        CONCAT('M:', rv.master_name),
+        CONCAT('U:', COALESCE(cum.unified_person, CONCAT('legacy-master:', rv.master_name))),
         rv.include_in_dashboard,
         rv.environment,
         rv.service,
@@ -211,6 +225,7 @@ record_demographics AS (
         rv.postal_district_code
     FROM raw_record_values rv
     LEFT JOIN current_membership cm ON cm.ccd_master = rv.master_name
+    LEFT JOIN current_unified_membership cum ON cum.ccd_master = rv.master_name
     WHERE cm.ccd_master IS NULL
 ),
 demographic_rollup AS (

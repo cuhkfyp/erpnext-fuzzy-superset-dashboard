@@ -59,11 +59,16 @@ raw query result, client data, or screenshot is stored here.
 
 ## Governed counting behavior
 
-Current Active and Needs Revalidation identity memberships collapse records to
-one logical person. Ended memberships/groups and pending recommendation,
-Splink, exception, or component-review rows do not. A multi-service person
-counts once globally and once in every applicable service. Canonical DOB, sex,
-and district categories preserve Unknown, Invalid, and Conflicting states.
+The active permanent Unified Person Membership is the internal logical-person
+anchor. The raw `HKSR-U` number is never projected: the dataset publishes only
+its SHA-256 pseudonym. During a guarded initial migration only, records without
+a Unified Person fall back to the prior current-group/CCD-row anchor so the
+dashboard remains available. Ended memberships and pending recommendation,
+Splink, exception, or component-review rows do not link people. A multi-service
+person counts once globally and once in every applicable service. Canonical
+DOB, sex, and district categories preserve Unknown, Invalid, and Conflicting
+states. The Identity Operations dataset also reports registry, Membership, and
+alias counts by lifecycle status.
 
 The Services-tab **Confirmed Interconnectivity** chord is filter-aware. Its
 links count logical people who have a current confirmed presence at both

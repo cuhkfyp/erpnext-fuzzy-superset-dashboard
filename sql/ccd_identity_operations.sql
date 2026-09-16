@@ -45,6 +45,42 @@ GROUP BY im.status
 UNION ALL
 
 SELECT
+    'Unified Person Registry',
+    person.status,
+    'Permanent numbers',
+    COUNT(*),
+    NULL,
+    MAX(person.modified)
+FROM `tabCCD Unified Person` person
+GROUP BY person.status
+
+UNION ALL
+
+SELECT
+    'Unified Person Memberships',
+    membership.status,
+    'Assignment history',
+    COUNT(*),
+    NULL,
+    MAX(membership.modified)
+FROM `tabCCD Unified Person Membership` membership
+GROUP BY membership.status
+
+UNION ALL
+
+SELECT
+    'Unified Person Aliases',
+    alias_row.status,
+    'Merge alias history',
+    COUNT(*),
+    NULL,
+    MAX(alias_row.modified)
+FROM `tabCCD Unified Person Alias` alias_row
+GROUP BY alias_row.status
+
+UNION ALL
+
+SELECT
     'Tiered Recommendations',
     r.status,
     COALESCE(NULLIF(r.model_tier, ''), 'Unclassified tier'),
