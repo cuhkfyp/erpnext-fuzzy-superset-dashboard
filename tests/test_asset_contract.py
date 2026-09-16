@@ -109,3 +109,14 @@ def test_canonical_and_loopback_database_routes_are_managed():
     assert 'parser.add_argument("--host", default="erpnext_db")' in repair
     assert "set_sqlalchemy_uri" in repair
     assert "SELECT 1" in repair
+
+
+def test_managed_runtime_uses_current_certificate_and_retires_known_daemon():
+    superset_unit = (ROOT / "deployment" / "hksr-superset.service").read_text()
+    restart = (ROOT / "deployment" / "hksr-superset-restart.sh").read_text()
+    assert "/superset/certs/fullchain.pem" in superset_unit
+    assert "/superset/certs/hksr.org.hk.key" in superset_unit
+    assert "openssl x509" in restart
+    assert "find_unmanaged_gunicorn_pid" in restart
+    assert "gunicorn -w 10 -k gevent" in restart
+    assert "restore_unmanaged_gunicorn" in restart

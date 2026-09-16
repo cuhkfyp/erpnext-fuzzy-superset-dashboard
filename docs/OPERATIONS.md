@@ -40,10 +40,17 @@ metadata. Stable UUIDs make this an upsert, not a duplicate import.
 ## Runtime rollback
 
 `hksr-superset-restart` performs configuration import preflight before stopping
-anything. During first cutover it records and terminates only the exact legacy
-`superset run -h 0.0.0.0 -p 8088` PID. If managed startup or HTTPS health fails,
-it restores that known legacy command. Configuration backups are stored outside
-the repository under `private_security/superset-config-backups`.
+anything. During cutover it records and terminates only the exact legacy
+`superset run -h 0.0.0.0 -p 8088` PID or the known ten-worker Gevent daemon
+signature previously launched by `run.sh`. If managed startup or HTTPS health
+fails, it restores the detected prior command. Configuration backups are stored
+outside the repository under `private_security/superset-config-backups`.
+
+The managed service uses the renewed chain at
+`/home/frappe-user/superset/certs/fullchain.pem` and checks that it remains valid
+for at least 24 hours before cutover. Do not launch `run.sh` in parallel with
+the service: ten Gevent workers are unsupported with the SQLite metadata backend
+and can create a query stampede when a dashboard opens.
 
 For a metadata rollback, stop only `hksr-superset.service`, retain the failed
 database for investigation, decompress the verified private backup to a new
