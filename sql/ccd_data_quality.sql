@@ -99,6 +99,9 @@ address_district_patterns AS (
     FROM address_district_patterns
     WHERE remaining_tokens <> ''
 ),
+private_address_overrides AS (
+    /*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/
+),
 location_flags AS (
     SELECT
         m.name AS master_name,
@@ -135,7 +138,11 @@ address_candidates AS (
         m.name AS master_name,
         m.ccd_reg_source AS source,
         REGEXP_REPLACE(UPPER(TRIM(m.res_addr1)), '[[:space:][:punct:]]', '')
-            AS normalized_address
+            AS normalized_address,
+        SHA2(
+            REGEXP_REPLACE(UPPER(TRIM(m.res_addr1)), '[[:space:][:punct:]]', ''),
+            256
+        ) AS address_hash
     FROM `tabCCD Master` m
     JOIN location_flags lf ON lf.master_name = m.name
     WHERE lf.residential_valid = 0
@@ -146,10 +153,14 @@ address_match_rollup AS (
     SELECT
         ac.master_name,
         ac.source,
-        COUNT(DISTINCT adp.district_code) AS address_district_match_count
+        CASE
+            WHEN MAX(pao.district_code) IS NOT NULL THEN 1
+            ELSE COUNT(DISTINCT adp.district_code)
+        END AS address_district_match_count
     FROM address_candidates ac
     LEFT JOIN address_district_patterns adp
       ON LOCATE(adp.address_token, ac.normalized_address) > 0
+    LEFT JOIN private_address_overrides pao ON pao.address_hash = ac.address_hash
     GROUP BY ac.master_name, ac.source
 ),
 address_quality AS (

@@ -14,14 +14,30 @@ import frappe
 
 
 SQL_DIR = Path("/tmp/ccd-dashboard-sql")
+ADDRESS_OVERRIDE_PATH = Path("/tmp/ccd_address_overrides.json")
+
+
+def _address_override_rows() -> str:
+    if not ADDRESS_OVERRIDE_PATH.exists():
+        return "SELECT NULL AS address_hash, NULL AS district_code WHERE 0"
+    payload = json.loads(ADDRESS_OVERRIDE_PATH.read_text())
+    rows = [
+        f"SELECT '{item['address_hash']}' AS address_hash, "
+        f"'{item['district_code']}' AS district_code"
+        for item in payload["overrides"]
+    ]
+    return "\nUNION ALL\n".join(rows) if rows else (
+        "SELECT NULL AS address_hash, NULL AS district_code WHERE 0"
+    )
 
 
 def _read(name: str) -> str:
     sql = (SQL_DIR / f"{name}.sql").read_text().strip().rstrip(";")
-    return sql.replace(
+    sql = sql.replace(
         "/*__HK_DISTRICT_GEOMETRY_ROWS__*/",
         "SELECT NULL AS district_code, NULL AS district_polygon WHERE 0",
     )
+    return sql.replace("/*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/", _address_override_rows())
 
 
 def _query(sql: str):

@@ -63,10 +63,17 @@ address_district_patterns AS (
     FROM address_district_patterns
     WHERE remaining_tokens <> ''
 ),
+private_address_overrides AS (
+    /*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/
+),
 address_candidates AS (
     SELECT
         m.name AS master_name,
-        REGEXP_REPLACE(UPPER(TRIM(m.res_addr1)), '[[:space:][:punct:]]', '') AS normalized_address
+        REGEXP_REPLACE(UPPER(TRIM(m.res_addr1)), '[[:space:][:punct:]]', '') AS normalized_address,
+        SHA2(
+            REGEXP_REPLACE(UPPER(TRIM(m.res_addr1)), '[[:space:][:punct:]]', ''),
+            256
+        ) AS address_hash
     FROM `tabCCD Master` m
     WHERE NULLIF(TRIM(m.res_addr1), '') IS NOT NULL
 ),
@@ -128,11 +135,19 @@ location_records AS (
             WHEN UPPER(TRIM(COALESCE(m.post_district, ''))) IN ('TUEN MUN', 'TM', '屯門區') THEN 'TM'
             WHEN UPPER(TRIM(COALESCE(m.post_district, ''))) IN ('YUEN LONG', 'YL', '元朗區') THEN 'YL'
         END AS postal_district_code,
-        CASE WHEN COALESCE(amr.district_match_count, 0) = 1 THEN amr.matched_district_code END
+        CASE
+            WHEN pao.district_code IS NOT NULL THEN pao.district_code
+            WHEN COALESCE(amr.district_match_count, 0) = 1 THEN amr.matched_district_code
+        END
             AS inferred_district_code,
-        COALESCE(amr.district_match_count, 0) AS address_district_match_count
+        CASE
+            WHEN pao.district_code IS NOT NULL THEN 1
+            ELSE COALESCE(amr.district_match_count, 0)
+        END AS address_district_match_count
     FROM `tabCCD Master` m
+    LEFT JOIN address_candidates ac ON ac.master_name = m.name
     LEFT JOIN address_match_rollup amr ON amr.master_name = m.name
+    LEFT JOIN private_address_overrides pao ON pao.address_hash = ac.address_hash
     WHERE NULLIF(TRIM(m.res_district), '') IS NOT NULL
        OR NULLIF(TRIM(m.post_district), '') IS NOT NULL
        OR NULLIF(TRIM(m.res_addr1), '') IS NOT NULL

@@ -90,6 +90,14 @@ another geocoding service. Ambiguous and unmatched addresses remain warnings.
 The simplified 18-district geometry is generated from the Hong Kong Home
 Affairs Department public boundary dataset and is versioned under `assets/`.
 
+Reviewed address decisions can be installed without versioning raw addresses.
+`scripts/build_private_address_overrides.py` reconciles reviewer fragments with
+the private review export and writes only normalized-address SHA-256 hashes plus
+controlled district codes to a mode-0600 JSON file. The installer reads that
+file from `/home/frappe-user/superset/private/ccd_address_overrides.json` when
+present. Direct residential and postal district fields retain higher priority;
+reviewed fragments that imply conflicting districts remain unresolved.
+
 ## Validation
 
 `scripts/validate_live_metrics.py` reconciles the virtual person dataset with a

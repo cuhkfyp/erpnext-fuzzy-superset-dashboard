@@ -43,6 +43,24 @@ def test_only_residential_address_1_is_parsed_as_a_private_fallback():
     assert "district_match_count = 1" in sql
 
 
+def test_private_address_overrides_are_hashed_and_injected_only_at_install():
+    map_sql = (ROOT / "sql" / "ccd_district_map.sql").read_text()
+    quality_sql = (ROOT / "sql" / "ccd_data_quality.sql").read_text()
+    installer = (ROOT / "scripts" / "install_superset_assets.py").read_text()
+    builder = (ROOT / "scripts" / "build_private_address_overrides.py").read_text()
+    assert "/*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/" in map_sql
+    assert "/*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/" in quality_sql
+    assert "pao.address_hash = ac.address_hash" in map_sql
+    assert "pao.address_hash = ac.address_hash" in quality_sql
+    assert "invalid SHA-256 hash" in installer
+    override_loader = installer.split("def private_address_override_rows", 1)[1].split(
+        "def load_dataset_sql", 1
+    )[0]
+    assert "address_text" not in override_loader
+    assert "hashlib.sha256" in builder
+    assert "os.chmod(args.output, 0o600)" in builder
+
+
 def test_pending_workflows_do_not_collapse_people():
     sql = (ROOT / "sql" / "ccd_person_service_presence.sql").read_text().lower()
     assert "tabccd identity membership" in sql

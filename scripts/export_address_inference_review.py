@@ -20,6 +20,10 @@ OUTPUT_PATH = Path("/tmp/ccd_address_inference_review.csv")
 
 
 quality_sql = SQL_PATH.read_text(encoding="utf-8")
+quality_sql = quality_sql.replace(
+    "/*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/",
+    "SELECT NULL AS address_hash, NULL AS district_code WHERE 0",
+)
 cte_prefix, separator, _ = quality_sql.partition(",\naddress_quality AS (")
 if not separator:
     raise RuntimeError("Could not locate the address-quality CTE boundary")

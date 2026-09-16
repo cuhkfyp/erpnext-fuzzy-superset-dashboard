@@ -23,6 +23,14 @@ DASHBOARD_SLUG = "common-client-database-governed"
 DASHBOARD_TITLE = "Common Client Database / 共同客戶資料庫"
 VIEWER_ROLE = "CCD Dashboard Viewer"
 DISTRICT_GEOMETRY_MARKER = "/*__HK_DISTRICT_GEOMETRY_ROWS__*/"
+PRIVATE_ADDRESS_OVERRIDE_MARKER = "/*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/"
+DEFAULT_PRIVATE_ADDRESS_OVERRIDES = Path(
+    "/home/frappe-user/superset/private/ccd_address_overrides.json"
+)
+DISTRICT_CODES = {
+    "CW", "EST", "SOU", "WC", "KC", "KWT", "SSP", "WTS", "YTM",
+    "IS", "KUI", "NOR", "SK", "ST", "TP", "TW", "TM", "YL",
+}
 
 
 def stable_uuid(kind: str, key: str) -> bytes:
@@ -55,10 +63,40 @@ def district_geometry_rows() -> str:
     return "\n    UNION ALL\n    ".join(rows)
 
 
-def load_dataset_sql(name: str) -> str:
+def private_address_override_rows(path: Path | None) -> tuple[str, int]:
+    if path is None or not path.exists():
+        return "SELECT NULL AS address_hash, NULL AS district_code WHERE 0", 0
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("version") != 1 or not isinstance(payload.get("overrides"), list):
+        raise RuntimeError("Private address override file has an unsupported schema")
+    rows = []
+    seen = set()
+    for item in payload["overrides"]:
+        address_hash = str(item.get("address_hash", "")).lower()
+        district_code = str(item.get("district_code", "")).upper()
+        if len(address_hash) != 64 or any(ch not in "0123456789abcdef" for ch in address_hash):
+            raise RuntimeError("Private address override contains an invalid SHA-256 hash")
+        if district_code not in DISTRICT_CODES:
+            raise RuntimeError("Private address override contains an invalid district code")
+        if address_hash in seen:
+            raise RuntimeError("Private address override contains a duplicate hash")
+        seen.add(address_hash)
+        rows.append(
+            f"SELECT '{address_hash}' AS address_hash, "
+            f"'{district_code}' AS district_code"
+        )
+    if not rows:
+        return "SELECT NULL AS address_hash, NULL AS district_code WHERE 0", 0
+    return "\n    UNION ALL\n    ".join(rows), len(rows)
+
+
+def load_dataset_sql(name: str, address_overrides: Path | None = None) -> str:
     sql = (ROOT / "sql" / f"{name}.sql").read_text().strip().rstrip(";")
     if DISTRICT_GEOMETRY_MARKER in sql:
         sql = sql.replace(DISTRICT_GEOMETRY_MARKER, district_geometry_rows())
+    if PRIVATE_ADDRESS_OVERRIDE_MARKER in sql:
+        override_rows, _ = private_address_override_rows(address_overrides)
+        sql = sql.replace(PRIVATE_ADDRESS_OVERRIDE_MARKER, override_rows)
     return sql
 
 
@@ -229,6 +267,7 @@ def upsert_dataset(
     database_name: str,
     schema: str,
     owner_id: int,
+    address_overrides: Path | None = None,
 ) -> int:
     stamp = now()
     name = dataset["name"]
@@ -236,7 +275,7 @@ def upsert_dataset(
         "SELECT id FROM tables WHERE table_name=? AND database_id=? AND schema=?",
         (name, database_id, schema),
     ).fetchone()
-    sql = load_dataset_sql(name)
+    sql = load_dataset_sql(name, address_overrides)
     if row:
         dataset_id = row[0]
         conn.execute(
@@ -776,7 +815,15 @@ def install(args: argparse.Namespace) -> dict[str, Any]:
             schema = row[0]
         datasets = load_json("datasets.json")
         dataset_ids = {
-            item["name"]: upsert_dataset(conn, item, args.database_id, database_name, schema, owner_id)
+            item["name"]: upsert_dataset(
+                conn,
+                item,
+                args.database_id,
+                database_name,
+                schema,
+                owner_id,
+                args.address_overrides,
+            )
             for item in datasets
         }
         dashboard_id = upsert_dashboard_shell(conn, owner_id)
@@ -844,6 +891,9 @@ def install(args: argparse.Namespace) -> dict[str, Any]:
             "chart_count": len(chart_ids),
             "viewer_role_id": role_id,
             "gest_ai_admin_removed": bool(args.finalize_access),
+            "private_address_override_count": private_address_override_rows(
+                args.address_overrides
+            )[1],
         }
     except Exception:
         conn.rollback()
@@ -858,6 +908,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--database-id", type=int, default=1)
     parser.add_argument("--schema")
     parser.add_argument("--owner", default="gest-ai")
+    parser.add_argument(
+        "--address-overrides",
+        type=Path,
+        default=DEFAULT_PRIVATE_ADDRESS_OVERRIDES,
+        help="Private hashed address override JSON; a missing file means no overrides",
+    )
     parser.add_argument("--finalize-access", action="store_true")
     return parser.parse_args()
 

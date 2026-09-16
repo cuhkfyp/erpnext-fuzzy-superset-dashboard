@@ -18,6 +18,8 @@ import frappe
 SQL_DIR = Path("/tmp/ccd-dashboard-sql")
 GEOMETRY_PATH = Path("/tmp/ccd-dashboard-assets/hk_districts_simplified.geojson")
 GEOMETRY_MARKER = "/*__HK_DISTRICT_GEOMETRY_ROWS__*/"
+ADDRESS_OVERRIDE_PATH = Path("/tmp/ccd_address_overrides.json")
+ADDRESS_OVERRIDE_MARKER = "/*__PRIVATE_ADDRESS_OVERRIDE_ROWS__*/"
 
 
 def geometry_rows() -> str:
@@ -32,10 +34,26 @@ def geometry_rows() -> str:
     return "\nUNION ALL\n".join(rows)
 
 
+def address_override_rows() -> str:
+    if not ADDRESS_OVERRIDE_PATH.exists():
+        return "SELECT NULL AS address_hash, NULL AS district_code WHERE 0"
+    payload = json.loads(ADDRESS_OVERRIDE_PATH.read_text())
+    rows = [
+        f"SELECT '{item['address_hash']}' AS address_hash, "
+        f"'{item['district_code']}' AS district_code"
+        for item in payload["overrides"]
+    ]
+    return "\nUNION ALL\n".join(rows) if rows else (
+        "SELECT NULL AS address_hash, NULL AS district_code WHERE 0"
+    )
+
+
 def read_sql(name: str) -> str:
     sql = (SQL_DIR / f"{name}.sql").read_text().strip().rstrip(";")
     if GEOMETRY_MARKER in sql:
         sql = sql.replace(GEOMETRY_MARKER, geometry_rows())
+    if ADDRESS_OVERRIDE_MARKER in sql:
+        sql = sql.replace(ADDRESS_OVERRIDE_MARKER, address_override_rows())
     return sql
 
 
