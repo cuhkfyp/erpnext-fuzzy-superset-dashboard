@@ -21,7 +21,7 @@
 
   {"key":"identity_group_size","tab":"identity","title":"Current Group Size / 當前群組大小","dataset":"ccd_identity_operations","viz":"bar","x":"group_size","groupby":["status"],"metrics":["SUM(metric_count)"],"filters":[["operation_area","==","Group Size Distribution"]],"global":true},
   {"key":"identity_group_status","tab":"identity","title":"Active vs Revalidation / 有效與需重驗","dataset":"ccd_identity_operations","viz":"pie","dimension":"status","metric":"SUM(metric_count)","filters":[["operation_area","==","Governed Groups"]],"global":true},
-  {"key":"identity_composition","tab":"identity","title":"Group Source Composition / 群組來源組合","dataset":"ccd_identity_operations","viz":"heatmap","x":"status","y":"detail","metric":"SUM(metric_count)","filters":[["operation_area","==","Group Source Composition"]],"global":true},
+  {"key":"identity_composition","tab":"identity","title":"Group Source Interconnectivity / 群組來源互聯","dataset":"ccd_identity_operations","viz":"chord","source":"status","target":"detail","metric":"SUM(metric_count)","filters":[["operation_area","==","Group Source Composition"]],"global":true},
   {"key":"identity_pipeline","tab":"identity","title":"Pending Workflow Pipelines / 待處理工作流程","dataset":"ccd_identity_operations","viz":"bar","x":"operation_area","groupby":["status"],"metrics":["SUM(metric_count)"],"filters":[["operation_area","IN",["Tiered Recommendations","Splink Review","Component Review","Exceptions","Overlap Resolution"]]],"global":true},
 
   {"key":"dq_classification","tab":"quality","title":"Source Classification / 來源分類","dataset":"ccd_data_quality","viz":"bar","x":"classification","metrics":["COUNT(DISTINCT source)"]},

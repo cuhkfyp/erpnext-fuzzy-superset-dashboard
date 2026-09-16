@@ -65,6 +65,15 @@ Splink, exception, or component-review rows do not. A multi-service person
 counts once globally and once in every applicable service. Canonical DOB, sex,
 and district categories preserve Unknown, Invalid, and Conflicting states.
 
+The Services-tab **Confirmed Interconnectivity** chord is filter-aware. Its
+links count logical people who have a current confirmed presence at both
+endpoints in the selected environment. The Identity Resolution-tab **Group
+Source Interconnectivity** chord is deliberately global: each current identity
+group contributes once to every unordered pair of distinct sources represented
+inside that group. Thus a group containing sources A, B, and C contributes one
+group to A-B, A-C, and B-C; chord width is the number of current groups sharing
+that source pair.
+
 `custom_service_start_date` is installed on CCD Master for the actual client
 service-enrolment date and on CCD Registration as optional source-level metadata.
 Growth uses only CCD Master dates; it is never inferred from registration or

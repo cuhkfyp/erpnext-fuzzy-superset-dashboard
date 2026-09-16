@@ -108,6 +108,9 @@ def test_growth_chord_and_hong_kong_map_are_enabled():
     assert charts["overall_growth"]["x"] == "overall_growth_month"
     assert charts["service_growth"]["x"] == "service_growth_month"
     assert charts["service_overlap"]["viz"] == "chord"
+    assert charts["identity_composition"]["viz"] == "chord"
+    assert charts["identity_composition"]["source"] == "status"
+    assert charts["identity_composition"]["target"] == "detail"
     assert charts["district_distribution"]["viz"] == "deck_polygon"
     assert charts["district_distribution"]["geometry"] == "district_polygon"
     installer = (ROOT / "scripts" / "install_superset_assets.py").read_text()

@@ -457,7 +457,8 @@ TAB_NOTES = {
     "identity": (
         "### Global governed state / 全域受管控狀態\n"
         "This tab deliberately ignores Environment, Service, and Source filters. Proposed recommendations, Splink "
-        "candidates, exceptions, and unfinished component reviews remain separate clients until current memberships exist."
+        "candidates, exceptions, and unfinished component reviews remain separate clients until current memberships exist. "
+        "The source chord is global: each current group contributes once to every unordered source pair it contains."
     ),
     "quality": (
         "### Governed readiness and inference / 受管控資料準備度及推論\n"

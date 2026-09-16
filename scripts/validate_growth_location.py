@@ -53,6 +53,7 @@ person_sql = read_sql("ccd_person_service_presence")
 map_sql = read_sql("ccd_district_map")
 quality_sql = read_sql("ccd_data_quality")
 overlap_sql = read_sql("ccd_service_overlap")
+identity_sql = read_sql("ccd_identity_operations")
 
 results = [
     timed(
@@ -82,10 +83,17 @@ results = [
         f"FROM ({person_sql}) p WHERE environment='Production' AND services_per_person > 1",
     ),
     timed(
-        "production_interconnectivity",
-        "SELECT endpoint_a, endpoint_b, COUNT(DISTINCT logical_person_key) AS clients "
-        f"FROM ({overlap_sql}) o WHERE environment='Production' "
-        "GROUP BY endpoint_a, endpoint_b ORDER BY endpoint_a, endpoint_b",
+        "interconnectivity_by_environment",
+        "SELECT environment, endpoint_a, endpoint_b, "
+        "COUNT(DISTINCT logical_person_key) AS clients "
+        f"FROM ({overlap_sql}) o GROUP BY environment, endpoint_a, endpoint_b "
+        "ORDER BY environment, endpoint_a, endpoint_b",
+    ),
+    timed(
+        "global_group_source_interconnectivity",
+        "SELECT status AS endpoint_a, detail AS endpoint_b, metric_count AS groups "
+        f"FROM ({identity_sql}) i WHERE operation_area='Group Source Composition' "
+        "ORDER BY status, detail",
     ),
     timed(
         "location_quality",
