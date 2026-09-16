@@ -12,6 +12,7 @@ from pathlib import Path
 DASHBOARD_SLUG = "common-client-database-governed"
 DATASETS = {
     "ccd_person_service_presence",
+    "ccd_district_map",
     "ccd_service_overlap",
     "ccd_identity_operations",
     "ccd_data_quality",
@@ -57,7 +58,7 @@ def validate(args: argparse.Namespace) -> dict[str, object]:
         dashboard_id, metadata_text = dashboard
         assert conn.execute(
             "SELECT COUNT(*) FROM dashboard_slices WHERE dashboard_id=?", (dashboard_id,)
-        ).fetchone()[0] == 24
+        ).fetchone()[0] == 26
 
         owner = conn.execute(
             """SELECT u.username FROM dashboard_user du
@@ -67,7 +68,8 @@ def validate(args: argparse.Namespace) -> dict[str, object]:
         assert owner == [("gest-ai",)]
 
         rows = conn.execute(
-            "SELECT id,table_name,cache_timeout,is_sqllab_view FROM tables WHERE table_name IN (?,?,?,?)",
+            "SELECT id,table_name,cache_timeout,is_sqllab_view FROM tables "
+            f"WHERE table_name IN ({','.join('?' for _ in DATASETS)})",
             tuple(sorted(DATASETS)),
         ).fetchall()
         assert {row[1] for row in rows} == DATASETS
@@ -105,7 +107,7 @@ def validate(args: argparse.Namespace) -> dict[str, object]:
         datasource_views = {
             view for permission, view in permissions if permission == "datasource_access"
         }
-        assert len(datasource_views) == 4
+        assert len(datasource_views) == 5
         assert all(any(f"[{name}]" in view for name in DATASETS) for view in datasource_views)
         assert not any("(id:48)" in view for view in datasource_views)
 
@@ -150,7 +152,7 @@ def validate(args: argparse.Namespace) -> dict[str, object]:
             "dashboard_id": dashboard_id,
             "dashboard_5_unchanged": bool(args.dashboard5_baseline),
             "dataset_ids": sorted(dataset_ids),
-            "chart_count": 24,
+            "chart_count": 26,
             "viewer_permission_count": len(permissions),
             "viewer_dataset_permissions": len(datasource_views),
             "gest_ai_roles": sorted(roles),

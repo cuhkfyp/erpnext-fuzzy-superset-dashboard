@@ -17,7 +17,11 @@ SQL_DIR = Path("/tmp/ccd-dashboard-sql")
 
 
 def _read(name: str) -> str:
-    return (SQL_DIR / f"{name}.sql").read_text().strip().rstrip(";")
+    sql = (SQL_DIR / f"{name}.sql").read_text().strip().rstrip(";")
+    return sql.replace(
+        "/*__HK_DISTRICT_GEOMETRY_ROWS__*/",
+        "SELECT NULL AS district_code, NULL AS district_polygon WHERE 0",
+    )
 
 
 def _query(sql: str):
@@ -98,7 +102,8 @@ def run() -> dict[str, object]:
     quality_summary = _query(
         "SELECT source,classification,environment,source_row_count,sex_mapping_ready,"
         "placeholder_sex_rows,dob_mapping_ready,dob_key_mapping_ready,valid_district_rows,"
-        "unmapped_location_rows,missing_district_rows,service_start_coverage_pct,growth_readiness "
+        "inferred_district_rows,ambiguous_address_rows,unmapped_location_rows,missing_district_rows,"
+        "service_start_coverage_pct,growth_readiness "
         f"FROM ({quality_sql}) data_quality ORDER BY classification,source"
     )
     result = {

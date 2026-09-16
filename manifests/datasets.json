@@ -12,12 +12,31 @@
       "dob_confidence": "VARCHAR(32)",
       "sex_category": "VARCHAR(32)",
       "district_code": "VARCHAR(16)",
+      "district_basis": "VARCHAR(64)",
       "district": "VARCHAR(255)",
       "area": "VARCHAR(255)",
+      "overall_growth_month": "VARCHAR(7)",
+      "service_growth_month": "VARCHAR(7)",
       "services_per_person": "BIGINT",
       "source_row_count": "BIGINT",
       "service_available_from": "DATE",
       "latest_ccd_modified": "DATETIME"
+    }
+  },
+  {
+    "name": "ccd_district_map",
+    "description": "Aggregate-safe governed district presence using explicit fields first and conservative on-server address inference as fallback.",
+    "columns": {
+      "logical_person_key": "VARCHAR(64)",
+      "environment": "VARCHAR(32)",
+      "service": "VARCHAR(255)",
+      "source": "VARCHAR(255)",
+      "identity_state": "VARCHAR(32)",
+      "district_code": "VARCHAR(16)",
+      "district_basis": "VARCHAR(64)",
+      "district": "VARCHAR(255)",
+      "area": "VARCHAR(255)",
+      "district_polygon": "TEXT"
     }
   },
   {
@@ -74,7 +93,10 @@
       "birthday_mapping_defect_rows": "BIGINT",
       "residential_district_mapping_ready": "BOOLEAN",
       "postal_district_mapping_ready": "BOOLEAN",
+      "address_inference_ready": "BOOLEAN",
       "valid_district_rows": "BIGINT",
+      "inferred_district_rows": "BIGINT",
+      "ambiguous_address_rows": "BIGINT",
       "unmapped_location_rows": "BIGINT",
       "missing_district_rows": "BIGINT",
       "service_available_from": "DATE",
@@ -82,4 +104,3 @@
     }
   }
 ]
-

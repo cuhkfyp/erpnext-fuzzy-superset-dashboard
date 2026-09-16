@@ -39,6 +39,26 @@ def district(row, valid):
     return "Unknown"
 
 
+def governed_district(row, valid, inferred_codes):
+    direct = district(row, valid)
+    if direct != "Unknown":
+        return direct, "direct"
+    unique = set(inferred_codes)
+    if len(unique) == 1:
+        return next(iter(unique)), "inferred"
+    return "Unknown", "ambiguous" if len(unique) > 1 else "unmatched"
+
+
+def growth_dates(rows):
+    usable = [row for row in rows if row.get("service_start")]
+    overall = min((row["service_start"] for row in usable), default=None)
+    by_service = {
+        service: min(row["service_start"] for row in usable if row["service"] == service)
+        for service in {row["service"] for row in usable}
+    }
+    return overall, by_service
+
+
 def test_active_and_revalidation_memberships_collapse_but_ended_do_not():
     records = [{"id": "a"}, {"id": "b"}, {"id": "c"}, {"id": "d"}]
     memberships = {
@@ -75,3 +95,28 @@ def test_valid_residential_then_postal_fallback():
     assert district({"res_district": "bad", "post_district": "ST"}, valid) == "ST"
     assert district({"res_district": "bad", "post_district": "bad2"}, valid) == "Unknown"
 
+
+def test_address_inference_is_last_resort_and_must_be_unique():
+    valid = {"CW", "ST"}
+    assert governed_district(
+        {"res_district": "CW", "post_district": "ST"}, valid, ["YL"]
+    ) == ("CW", "direct")
+    assert governed_district(
+        {"res_district": "bad", "post_district": "ST"}, valid, ["YL"]
+    ) == ("ST", "direct")
+    assert governed_district({}, valid, ["YL"]) == ("YL", "inferred")
+    assert governed_district({}, valid, ["YL", "TM"]) == ("Unknown", "ambiguous")
+    assert governed_district({}, valid, []) == ("Unknown", "unmatched")
+
+
+def test_growth_uses_earliest_overall_and_first_date_within_service():
+    rows = [
+        {"service": "A", "service_start": "2024-04-01"},
+        {"service": "A", "service_start": "2024-02-01"},
+        {"service": "B", "service_start": "2024-03-01"},
+        {"service": "B", "service_start": None},
+    ]
+    assert growth_dates(rows) == (
+        "2024-02-01",
+        {"A": "2024-02-01", "B": "2024-03-01"},
+    )

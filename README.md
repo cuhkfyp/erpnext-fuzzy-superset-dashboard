@@ -5,8 +5,8 @@ dashboard is a new object and the installer refuses to modify dashboard ID 5.
 
 ## What is installed
 
-- Four live MariaDB virtual datasets under `sql/`.
-- Twenty-four bilingual charts on Summary, Services, Identity Resolution, and
+- Five live MariaDB virtual datasets under `sql/`.
+- Twenty-six bilingual charts on Summary, Services, Identity Resolution, and
   Data Quality tabs.
 - Cascading Environment → Service → Source filters. Production is the default;
   clearing Environment selects all included environments.
@@ -67,17 +67,28 @@ and district categories preserve Unknown, Invalid, and Conflicting states.
 
 `custom_service_start_date` is installed on CCD Master for the actual client
 service-enrolment date and on CCD Registration as optional source-level metadata.
-Growth uses only CCD Master dates. New User Growth remains unavailable until the
-client-level field has adequate populated coverage and retained history; it is
-never inferred from registration or modification timestamps.
+Growth uses only CCD Master dates; it is never inferred from registration or
+modification timestamps. Overall growth uses each logical person's earliest
+populated service-start date, while service growth uses the first populated
+date within each service. Missing dates remain excluded and their coverage is
+reported in Data Quality.
+
+The Hong Kong district map prioritizes a controlled residential district, then
+a controlled postal district, then conservative bilingual token matching on
+Residential Address 1. Address inference runs entirely inside MariaDB: raw
+address text is neither projected by a dashboard dataset nor sent to Google or
+another geocoding service. Ambiguous and unmatched addresses remain warnings.
+The simplified 18-district geometry is generated from the Hong Kong Home
+Affairs Department public boundary dataset and is versioned under `assets/`.
 
 ## Validation
 
 `scripts/validate_live_metrics.py` reconciles the virtual person dataset with a
 separate raw-row-minus-current-group-reduction query. `scripts/benchmark_live_query.py`
-times representative Production charts. The test suite checks privacy,
-filter/global scope, role exclusions, metadata fields, and synthetic governance
-edge cases.
+times representative Production charts, and `scripts/validate_growth_location.py`
+checks growth coverage, district inference, and mapped sex values using aggregate
+output only. The test suite checks privacy, filter/global scope, role exclusions,
+metadata fields, and synthetic governance edge cases.
 
 `scripts/validate_registration_metadata.py` audits the live Custom Fields and
 current-source classifications from a Frappe console. The read-only

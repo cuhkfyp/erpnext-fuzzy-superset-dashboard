@@ -22,6 +22,7 @@ NAMESPACE = uuid.UUID("7e039277-2227-4bbc-82c2-6be8af84ab52")
 DASHBOARD_SLUG = "common-client-database-governed"
 DASHBOARD_TITLE = "Common Client Database / 共同客戶資料庫"
 VIEWER_ROLE = "CCD Dashboard Viewer"
+DISTRICT_GEOMETRY_MARKER = "/*__HK_DISTRICT_GEOMETRY_ROWS__*/"
 
 
 def stable_uuid(kind: str, key: str) -> bytes:
@@ -38,6 +39,27 @@ def next_id(conn: sqlite3.Connection, table: str) -> int:
 
 def load_json(name: str) -> Any:
     return json.loads((ROOT / "manifests" / name).read_text())
+
+
+def district_geometry_rows() -> str:
+    payload = json.loads((ROOT / "assets" / "hk_districts_simplified.geojson").read_text())
+    rows = []
+    for feature in payload["features"]:
+        code = feature["properties"]["district_code"]
+        coordinates = json.dumps(feature["geometry"]["coordinates"], separators=(",", ":"))
+        rows.append(
+            f"SELECT '{code}' AS district_code, '{coordinates}' AS district_polygon"
+        )
+    if len(rows) != 18:
+        raise RuntimeError("Hong Kong district geometry must contain exactly 18 districts")
+    return "\n    UNION ALL\n    ".join(rows)
+
+
+def load_dataset_sql(name: str) -> str:
+    sql = (ROOT / "sql" / f"{name}.sql").read_text().strip().rstrip(";")
+    if DISTRICT_GEOMETRY_MARKER in sql:
+        sql = sql.replace(DISTRICT_GEOMETRY_MARKER, district_geometry_rows())
+    return sql
 
 
 def sql_metric(expression: str) -> dict[str, Any]:
@@ -138,6 +160,51 @@ def chart_params(spec: dict[str, Any], dataset_id: int, dashboard_id: int) -> di
                 "y_axis_format": "SMART_NUMBER",
             }
         )
+    elif viz == "chord":
+        base.update(
+            {
+                "viz_type": "chord",
+                "groupby": spec["source"],
+                "columns": spec["target"],
+                "metric": sql_metric(spec["metric"]),
+                "y_axis_format": ",.0f",
+                "color_scheme": "supersetColors",
+            }
+        )
+    elif viz == "deck_polygon":
+        base.update(
+            {
+                "viz_type": "deck_polygon",
+                "line_column": spec["geometry"],
+                "line_type": "json",
+                "metric": sql_metric(spec["metric"]),
+                "tooltip_contents": spec.get("tooltip", []),
+                "mapbox_style": "tile://https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "autozoom": True,
+                "reverse_long_lat": False,
+                "filled": True,
+                "stroked": True,
+                "extruded": False,
+                "line_width": 1,
+                "line_width_unit": "pixels",
+                "opacity": 78,
+                "linear_color_scheme": "blue_white_yellow",
+                "color_scheme_type": "linear_palette",
+                "fill_color_picker": {"r": 25, "g": 118, "b": 145, "a": 0.78},
+                "stroke_color_picker": {"r": 255, "g": 255, "b": 255, "a": 1},
+                "legend_position": "tr",
+                "legend_format": ",.0f",
+                "viewport": {
+                    "longitude": 114.17,
+                    "latitude": 22.35,
+                    "zoom": 9.3,
+                    "bearing": 0,
+                    "pitch": 0,
+                    "maxZoom": 20,
+                    "minZoom": 0,
+                },
+            }
+        )
     elif viz == "table":
         base.update(
             {
@@ -169,7 +236,7 @@ def upsert_dataset(
         "SELECT id FROM tables WHERE table_name=? AND database_id=? AND schema=?",
         (name, database_id, schema),
     ).fetchone()
-    sql = (ROOT / "sql" / f"{name}.sql").read_text().strip().rstrip(";")
+    sql = load_dataset_sql(name)
     if row:
         dataset_id = row[0]
         conn.execute(
@@ -378,7 +445,9 @@ TAB_NOTES = {
     "summary": (
         "### Governed logical-person totals / 受管控邏輯客戶總數\n"
         "Counts use only included sources. Current Active or Needs Revalidation memberships collapse to one person; "
-        "ended groups and pending workflow records do not. No client identifiers, contacts, or raw addresses are exposed."
+        "ended groups and pending workflow records do not. Growth uses the earliest client service-start date. The map "
+        "prioritizes residential district, then postal district, then conservative on-server address inference. No client "
+        "identifiers, contacts, or raw addresses are exposed."
     ),
     "services": (
         "### Service presence / 服務分佈\n"
@@ -391,9 +460,10 @@ TAB_NOTES = {
         "candidates, exceptions, and unfinished component reviews remain separate clients until current memberships exist."
     ),
     "quality": (
-        "### Readiness before inference / 推論前的資料準備度\n"
-        "Unknown, invalid, conflicting, excluded, and unclassified values remain visible. A stored sex placeholder is not "
-        "trusted unless the current registration explicitly maps the sex field."
+        "### Governed readiness and inference / 受管控資料準備度及推論\n"
+        "Unknown, invalid, conflicting, excluded, and unclassified values remain visible. Address inference runs locally "
+        "only after residential and postal district fields are unavailable; ambiguous addresses remain Unknown. A stored "
+        "sex placeholder is not trusted unless the current registration explicitly maps the sex field."
     ),
 }
 
@@ -414,7 +484,7 @@ def build_position(chart_specs: list[dict[str, Any]], chart_ids: dict[str, int])
     }
     specs_by_tab = {key: [item for item in chart_specs if item["tab"] == key] for key, _ in TAB_DEFINITIONS}
     width_patterns = {
-        "summary": [2, 2, 2, 2, 2, 2, 12, 6, 6, 12],
+        "summary": [2, 2, 2, 2, 2, 2, 12, 6, 6, 6, 6, 12],
         "services": [8, 4, 4, 8, 12, 12],
         "identity": [6, 6, 12, 12],
         "quality": [4, 8, 12, 12],
@@ -467,38 +537,19 @@ def build_position(chart_specs: list[dict[str, Any]], chart_ids: dict[str, int])
                     "chartId": chart_id,
                     "sliceName": spec["title"],
                     "uuid": str(uuid.UUID(bytes=stable_uuid("chart", spec["key"]))),
-                    "height": 38 if spec["viz"] == "pie" else (28 if width < 12 else 34),
+                    "height": (
+                        48
+                        if spec["viz"] in {"deck_polygon", "chord"}
+                        else 38
+                        if spec["viz"] == "pie"
+                        else 28
+                        if width < 12
+                        else 34
+                    ),
                     "width": width,
                 },
             }
             current_width += width
-        if tab_key == "summary":
-            growth_id = "MARKDOWN-growth-unavailable"
-            growth_row = "ROW-summary-growth"
-            children.append(growth_row)
-            position[growth_row] = {
-                "id": growth_row,
-                "type": "ROW",
-                "parents": parent_chain + [tab_id],
-                "children": [growth_id],
-                "meta": {"background": "BACKGROUND_TRANSPARENT"},
-            }
-            position[growth_id] = {
-                "id": growth_id,
-                "type": "MARKDOWN",
-                "parents": parent_chain + [tab_id, growth_row],
-                "children": [],
-                "meta": {
-                    "code": (
-                        "### New User Growth / 新客戶增長 — Unavailable / 尚未提供\n"
-                        "The governed `custom_service_start_date` field is installed on CCD Master, but populated "
-                        "coverage and adequate retained history are not yet available. Registration creation dates "
-                        "and the registration-level reference date are not substituted because that would be misleading."
-                    ),
-                    "height": 10,
-                    "width": 12,
-                },
-            }
     return position
 
 
@@ -508,15 +559,17 @@ def filter_config(
     chart_ids: dict[str, int],
 ) -> list[dict[str, Any]]:
     nonglobal = [chart_ids[item["key"]] for item in chart_specs if not item.get("global")]
-    person_charts = [
+    service_charts = [
         chart_ids[item["key"]]
         for item in chart_specs
-        if not item.get("global") and item["dataset"] == "ccd_person_service_presence"
+        if not item.get("global")
+        and item["dataset"] in {"ccd_person_service_presence", "ccd_district_map"}
     ]
     source_charts = [
         chart_ids[item["key"]]
         for item in chart_specs
-        if not item.get("global") and item["dataset"] in {"ccd_person_service_presence", "ccd_data_quality"}
+        if not item.get("global")
+        and item["dataset"] in {"ccd_person_service_presence", "ccd_district_map", "ccd_data_quality"}
     ]
     common_control = {
         "sortAscending": True,
@@ -537,6 +590,7 @@ def filter_config(
             "filterType": "filter_select",
             "targets": [
                 {"column": {"name": "environment"}, "datasetId": dataset_ids["ccd_person_service_presence"]},
+                {"column": {"name": "environment"}, "datasetId": dataset_ids["ccd_district_map"]},
                 {"column": {"name": "environment"}, "datasetId": dataset_ids["ccd_service_overlap"]},
                 {"column": {"name": "environment"}, "datasetId": dataset_ids["ccd_data_quality"]},
             ],
@@ -562,14 +616,15 @@ def filter_config(
             "name": "Service / 服務",
             "filterType": "filter_select",
             "targets": [
-                {"column": {"name": "service"}, "datasetId": dataset_ids["ccd_person_service_presence"]}
+                {"column": {"name": "service"}, "datasetId": dataset_ids["ccd_person_service_presence"]},
+                {"column": {"name": "service"}, "datasetId": dataset_ids["ccd_district_map"]},
             ],
             "defaultDataMask": {"extraFormData": {}, "filterState": {}, "ownState": {}},
             "cascadeParentIds": [env_id],
             "scope": {"rootPath": ["ROOT_ID"], "excluded": []},
             "type": "NATIVE_FILTER",
             "description": "Options follow the Environment selection.",
-            "chartsInScope": person_charts,
+            "chartsInScope": service_charts,
         },
         {
             "id": source_id,
@@ -578,6 +633,7 @@ def filter_config(
             "filterType": "filter_select",
             "targets": [
                 {"column": {"name": "source"}, "datasetId": dataset_ids["ccd_person_service_presence"]},
+                {"column": {"name": "source"}, "datasetId": dataset_ids["ccd_district_map"]},
                 {"column": {"name": "source"}, "datasetId": dataset_ids["ccd_data_quality"]},
             ],
             "defaultDataMask": {"extraFormData": {}, "filterState": {}, "ownState": {}},

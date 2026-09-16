@@ -34,7 +34,7 @@ Never place the database or backup in this repository.
 Copy the live metadata database to a disposable path, run the installer twice,
 check `PRAGMA integrity_check`, then start a disposable Superset instance on a
 non-production port with a temporary config pointing to the copy. Confirm the
-four datasets and 24 charts before running the same installer against live
+five datasets and 26 charts before running the same installer against live
 metadata. Stable UUIDs make this an upsert, not a duplicate import.
 
 ## Runtime rollback
@@ -59,7 +59,7 @@ service. Recheck `/health` and the dashboard-5 hash.
 
 ## Access checks
 
-`CCD Dashboard Viewer` receives only four dynamic `datasource_access` entries
+`CCD Dashboard Viewer` receives only five dynamic `datasource_access` entries
 and one dashboard-role link. It has no `database_access`, `schema_access`,
 `all_datasource_access`, SQL Lab menu/action, CSV/export, or drill permission.
 Superset Admin users remain unrestricted. ERPNext roles are unrelated.

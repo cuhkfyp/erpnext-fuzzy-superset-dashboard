@@ -75,6 +75,7 @@ raw_record_values AS (
         COALESCE(NULLIF(TRIM(m.service_name), ''), ss.registration_service, m.ccd_reg_source) AS service,
         m.ccd_reg_source AS source,
         ss.service_available_from,
+        m.custom_service_start_date AS service_start_date,
         m.modified,
         CASE
             WHEN m.birthday IS NULL THEN NULL
@@ -176,6 +177,7 @@ record_demographics AS (
         rv.source,
         cm.identity_state,
         rv.service_available_from,
+        rv.service_start_date,
         rv.modified,
         rv.usable_dob,
         rv.invalid_dob,
@@ -198,6 +200,7 @@ record_demographics AS (
         rv.source,
         'Standalone',
         rv.service_available_from,
+        rv.service_start_date,
         rv.modified,
         rv.usable_dob,
         rv.invalid_dob,
@@ -220,8 +223,12 @@ demographic_rollup AS (
         SUM(explicit_non_actual_dob) AS non_actual_dob_count,
         COUNT(DISTINCT trusted_sex) AS trusted_sex_count,
         MAX(trusted_sex) AS canonical_sex,
-        COUNT(DISTINCT COALESCE(residential_district_code, postal_district_code)) AS district_count,
-        MAX(COALESCE(residential_district_code, postal_district_code)) AS canonical_district_code
+        COUNT(DISTINCT residential_district_code) AS residential_district_count,
+        MAX(residential_district_code) AS canonical_residential_district_code,
+        COUNT(DISTINCT postal_district_code) AS postal_district_count,
+        MAX(postal_district_code) AS canonical_postal_district_code,
+        0 AS inferred_district_count,
+        NULL AS canonical_inferred_district_code
     FROM record_demographics
     WHERE identity_group IS NOT NULL
     GROUP BY person_anchor
@@ -255,10 +262,23 @@ group_person_demographics AS (
             ELSE 'Unknown'
         END AS sex_category,
         CASE
-            WHEN district_count > 1 THEN 'CONFLICT'
-            WHEN district_count = 1 THEN canonical_district_code
+            WHEN residential_district_count > 1 THEN 'CONFLICT'
+            WHEN residential_district_count = 1 THEN canonical_residential_district_code
+            WHEN postal_district_count > 1 THEN 'CONFLICT'
+            WHEN postal_district_count = 1 THEN canonical_postal_district_code
+            WHEN inferred_district_count > 1 THEN 'CONFLICT'
+            WHEN inferred_district_count = 1 THEN canonical_inferred_district_code
             ELSE 'UNKNOWN'
-        END AS district_code
+        END AS district_code,
+        CASE
+            WHEN residential_district_count > 1 THEN 'Conflicting / 衝突'
+            WHEN residential_district_count = 1 THEN 'Residential district / 住宅地區'
+            WHEN postal_district_count > 1 THEN 'Conflicting / 衝突'
+            WHEN postal_district_count = 1 THEN 'Postal district / 郵寄地區'
+            WHEN inferred_district_count > 1 THEN 'Conflicting / 衝突'
+            WHEN inferred_district_count = 1 THEN 'Address inferred / 地址推斷'
+            ELSE 'Unknown / 未知'
+        END AS district_basis
     FROM demographic_rollup
 ),
 included_records AS (
@@ -268,11 +288,32 @@ included_records AS (
     WHERE rd.include_in_dashboard = 1
       AND rd.environment IN ('Production', 'UAT', 'SIT', 'Development', 'Test')
 ),
-person_service_counts AS (
-    SELECT person_anchor, COUNT(DISTINCT service) AS services_per_person
+person_growth AS (
+    SELECT
+        person_anchor,
+        environment,
+        MIN(service_start_date) AS overall_service_start_date
     FROM included_records
     WHERE identity_group IS NOT NULL
-    GROUP BY person_anchor
+      AND service_start_date IS NOT NULL
+    GROUP BY person_anchor, environment
+),
+person_service_growth AS (
+    SELECT
+        person_anchor,
+        environment,
+        service,
+        MIN(service_start_date) AS service_start_date
+    FROM included_records
+    WHERE identity_group IS NOT NULL
+      AND service_start_date IS NOT NULL
+    GROUP BY person_anchor, environment, service
+),
+person_service_counts AS (
+    SELECT person_anchor, environment, COUNT(DISTINCT service) AS services_per_person
+    FROM included_records
+    WHERE identity_group IS NOT NULL
+    GROUP BY person_anchor, environment
 ),
 grouped_presence AS (
     SELECT
@@ -299,13 +340,25 @@ categorized_presence AS (
         pd.dob_confidence,
         pd.sex_category,
         pd.district_code,
+        pd.district_basis,
+        DATE_FORMAT(pg.overall_service_start_date, '%Y-%m') AS overall_growth_month,
+        DATE_FORMAT(psg.service_start_date, '%Y-%m') AS service_growth_month,
         psc.services_per_person,
         gp.source_row_count,
         gp.service_available_from,
         gp.latest_ccd_modified
     FROM grouped_presence gp
     JOIN group_person_demographics pd ON pd.person_anchor = gp.person_anchor
-    JOIN person_service_counts psc ON psc.person_anchor = gp.person_anchor
+    JOIN person_service_counts psc
+      ON psc.person_anchor = gp.person_anchor
+     AND psc.environment = gp.environment
+    LEFT JOIN person_growth pg
+      ON pg.person_anchor = gp.person_anchor
+     AND pg.environment = gp.environment
+    LEFT JOIN person_service_growth psg
+      ON psg.person_anchor = gp.person_anchor
+     AND psg.environment = gp.environment
+     AND psg.service = gp.service
 
     UNION ALL
 
@@ -335,6 +388,13 @@ categorized_presence AS (
         END,
         COALESCE(ir.trusted_sex, 'Unknown'),
         COALESCE(ir.residential_district_code, ir.postal_district_code, 'UNKNOWN'),
+        CASE
+            WHEN ir.residential_district_code IS NOT NULL THEN 'Residential district / 住宅地區'
+            WHEN ir.postal_district_code IS NOT NULL THEN 'Postal district / 郵寄地區'
+            ELSE 'Unknown / 未知'
+        END,
+        DATE_FORMAT(ir.service_start_date, '%Y-%m'),
+        DATE_FORMAT(ir.service_start_date, '%Y-%m'),
         1,
         1,
         ir.service_available_from,
@@ -352,6 +412,7 @@ SELECT
     cp.dob_confidence,
     cp.sex_category,
     cp.district_code,
+    cp.district_basis,
     CASE cp.district_code
         WHEN 'CW' THEN 'Central and Western / 中西區'
         WHEN 'EST' THEN 'Eastern / 東區'
@@ -382,6 +443,8 @@ SELECT
         WHEN cp.district_code = 'CONFLICT' THEN 'Conflicting / 衝突'
         ELSE 'Unknown / 未知'
     END AS area,
+    cp.overall_growth_month,
+    cp.service_growth_month,
     cp.services_per_person,
     cp.source_row_count,
     cp.service_available_from,
